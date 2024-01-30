@@ -112,7 +112,7 @@ void merge(vector<int> &array, int s, int e) {
     int l_ptr = 0, r_ptr = 0;
 
     for(int i = s; i <= e; i++) {
-        if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
+        if(r_ptr == (int)right.size() || (l_ptr != (int)left.size() && left[l_ptr] <= right[r_ptr])) {
             array[i] = left[l_ptr];
             l_ptr++;
         } else {
