@@ -118,8 +118,14 @@ vector<int> randomArrayGenerator(int size){
     vector<int> randomArray;
 
     for (int i = 0; i < size; i++){
-        randomArray.push_back(rand());
+        randomArray.push_back(i);
     }
+    //Fisher Yates algorithm
+    for (int i = size - 1; i > 0; i--){
+        int j = std::rand() % (i + 1);
+        std::swap(randomArray[i], randomArray[j]);
+    }
+
 
     return randomArray;
 }
