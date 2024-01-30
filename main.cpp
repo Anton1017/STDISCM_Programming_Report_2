@@ -34,6 +34,11 @@ int main(){
     const unsigned int seed = 4;
     srand(seed);
     // TODO: Get array size and thread count from user
+    int array_size, thread_count;
+    cout << "Enter the array size: ";
+    cin >> array_size;
+    cout << "Enter the thread count: ";
+    cin >> thread_count;
 
     // TODO: Generate a random array of given size
 
