@@ -41,6 +41,9 @@ vector<int> randomArrayGenerator(int size);
 
 void printArray(vector<int> &array);
 
+
+void displaySortStatus(vector<int> &array);
+
 int main(){
     // Seed your randomizer
     const unsigned int seed = 4;
@@ -72,7 +75,8 @@ int main(){
     std::chrono::duration<double> elapsed{end_time - start_time};
 
     // PRINT
-    printArray(randomArray);
+    // printArray(randomArray);
+    displaySortStatus(randomArray);
     cout << "Time: " << elapsed.count() << "s\n";
 }
 
@@ -157,4 +161,15 @@ void printArray(vector<int> &array){
         cout << array[i] << endl;
     }
     cout << endl;
+}
+
+void displaySortStatus(vector<int> &array){
+    string isSorted = "true";
+    for(int i = 0; i < array.size() - 1; i++){
+        if(array[i] > array[i+1]){
+            isSorted = "false";
+            break;
+        }
+    }
+    cout << "Sorted? " << isSorted << endl;
 }
