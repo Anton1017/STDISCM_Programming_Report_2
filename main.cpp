@@ -1,6 +1,7 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <random>
 
 using namespace std;
 
@@ -30,7 +31,8 @@ void merge(vector<int> &array, int s, int e);
 
 int main(){
     // TODO: Seed your randomizer
-
+    const unsigned int seed = 4;
+    srand(seed);
     // TODO: Get array size and thread count from user
 
     // TODO: Generate a random array of given size
