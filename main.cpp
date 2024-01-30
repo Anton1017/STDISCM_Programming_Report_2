@@ -50,8 +50,11 @@ int main(){
     // TODO: Generate a random array of given size
     vector<int> randomArray = randomArrayGenerator(array_size);
     // TODO: Call the generate_intervals method to generate the merge sequence
-
+    vector<ii> intervals = generate_intervals(0, array_size - 1);
     // TODO: Call merge on each interval in sequence
+    for(int i = 0; i < (int)intervals.size(); i++){
+        merge(randomArray, intervals[i].first, intervals[i].second);
+    }
 
     // Once you get the single-threaded version to work, it's time to implement 
     // the concurrent version. Good luck :)
