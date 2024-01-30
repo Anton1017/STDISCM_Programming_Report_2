@@ -29,6 +29,13 @@ e     : int         - end index (inclusive) of merge
 */
 void merge(vector<int> &array, int s, int e);
 
+/*
+    This function generates a random array
+
+    Parameters:
+    size : int - the size of the array
+*/
+vector<int> randomArrayGenerator(int size);
 int main(){
     // TODO: Seed your randomizer
     const unsigned int seed = 4;
@@ -41,7 +48,7 @@ int main(){
     cin >> thread_count;
 
     // TODO: Generate a random array of given size
-
+    vector<int> randomArray = randomArrayGenerator(array_size);
     // TODO: Call the generate_intervals method to generate the merge sequence
 
     // TODO: Call merge on each interval in sequence
@@ -102,4 +109,14 @@ void merge(vector<int> &array, int s, int e) {
             r_ptr++;
         }
     }
+}
+
+vector<int> randomArrayGenerator(int size){
+    vector<int> randomArray;
+
+    for (int i = 0; i < size; i++){
+        randomArray.push_back(rand());
+    }
+
+    return randomArray;
 }
