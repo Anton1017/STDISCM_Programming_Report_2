@@ -2,6 +2,7 @@
 #include <utility>
 #include <vector>
 #include <random>
+#include <chrono>
 
 using namespace std;
 
@@ -41,31 +42,38 @@ vector<int> randomArrayGenerator(int size);
 void printArray(vector<int> &array);
 
 int main(){
-    // TODO: Seed your randomizer
+    // Seed your randomizer
     const unsigned int seed = 4;
     srand(seed);
-    // TODO: Get array size and thread count from user
+    // Get array size and thread count from user
     int array_size, thread_count;
     cout << "Enter the array size: ";
     cin >> array_size;
     cout << "Enter the thread count: ";
     cin >> thread_count;
 
-    // TODO: Generate a random array of given size
+    // Generate a random array of given size
     vector<int> randomArray = randomArrayGenerator(array_size);
-    printArray(randomArray);
-    // TODO: Call the generate_intervals method to generate the merge sequence
+    //printArray(randomArray);
+
+    // Call the generate_intervals method to generate the merge sequence
     vector<ii> intervals = generate_intervals(0, array_size - 1);
-    // TODO: Call merge on each interval in sequence
+
+    // Start timer
+    auto start_time{std::chrono::steady_clock::now()};
+
+    // Call merge on each interval in sequence
     for(int i = 0; i < (int)intervals.size(); i++){
         merge(randomArray, intervals[i].first, intervals[i].second);
     }
 
+    // End timer
+    auto end_time{std::chrono::steady_clock::now()};
+    std::chrono::duration<double> elapsed{end_time - start_time};
+
     // PRINT
     printArray(randomArray);
-
-    // Once you get the single-threaded version to work, it's time to implement 
-    // the concurrent version. Good luck :)
+    cout << "Time: " << elapsed.count() << "s\n";
 }
 
 vector<ii> generate_intervals(int start, int end) {
