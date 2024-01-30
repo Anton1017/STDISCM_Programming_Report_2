@@ -1,8 +1,13 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 #include <random>
 #include <chrono>
+
+#include <functional>
+
+#include "BS_thread_pool.hpp" // BS::thread_pool from https://github.com/bshoshany/thread-pool
 
 using namespace std;
 
@@ -41,8 +46,22 @@ vector<int> randomArrayGenerator(int size);
 
 void printArray(vector<int> &array);
 
-
 void displaySortStatus(vector<int> &array);
+
+pair<ii,ii> getSplitIntervals(ii interval);
+
+
+// IntPairHash is utilized for hashing the int pair struct for the unordered hashmap
+
+using IntPair = ii;
+
+struct IntPairHash {
+    static_assert(sizeof(int) * 2 == sizeof(size_t));
+
+    size_t operator()(IntPair p) const noexcept {
+        return size_t(p.first) << 32 | p.second;
+    }
+};
 
 int main(){
     // Seed your randomizer
@@ -62,12 +81,66 @@ int main(){
     // Call the generate_intervals method to generate the merge sequence
     vector<ii> intervals = generate_intervals(0, array_size - 1);
 
+    // Construct a thread pool with the corresponding thread count
+    BS::thread_pool pool(thread_count);
+
+
+    // single-threaded-----------------------------
+
+    // // Start timer
+    // auto start_time{std::chrono::steady_clock::now()};
+
+    // Call merge on each interval in sequence
+    // for(int i = 0; i < (int)intervals.size(); i++){
+    //     merge(randomArray, intervals[i].first, intervals[i].second);
+    // }
+
+    // // End timer
+    // auto end_time{std::chrono::steady_clock::now()};
+    // std::chrono::duration<double> elapsed{end_time - start_time};
+
+    // ---------------------------------------------
+
+
+    // prep for concurrent mergesort
+    unordered_map<ii, bool, IntPairHash> umap;
+    mutex umap_mutex;
+
     // Start timer
     auto start_time{std::chrono::steady_clock::now()};
 
-    // Call merge on each interval in sequence
-    for(int i = 0; i < (int)intervals.size(); i++){
-        merge(randomArray, intervals[i].first, intervals[i].second);
+    for(int i = 0; i < intervals.size(); i++){
+        if(intervals[i].first == intervals[i].second)
+            umap[intervals[i]] = true;
+        else
+            umap[intervals[i]] = false;
+    }
+
+    int intv_ctr = 0;
+    int intv_size = intervals.size();
+
+    // TODO
+    while (true){
+        //cout << intv_ctr << " out of " << intv_size << endl;
+        if(intv_ctr == intv_size){
+            break;
+        }
+        for(auto intv: intervals){
+            pair<ii,ii> splitPair = getSplitIntervals(intv);
+            if(umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true){
+                pool.detach_task(
+                    [&randomArray, &umap, &intv, &intv_ctr, &umap_mutex]
+                    {
+                        merge(randomArray, intv.first, intv.second);
+
+                        lock_guard<mutex> lock(umap_mutex);
+                        umap[intv] = true;
+                        intv_ctr++;
+                    }
+                );
+
+            }
+        }
     }
 
     // End timer
@@ -75,7 +148,7 @@ int main(){
     std::chrono::duration<double> elapsed{end_time - start_time};
 
     // PRINT
-    // printArray(randomArray);
+    printArray(randomArray);
     displaySortStatus(randomArray);
     cout << "Time: " << elapsed.count() << "s\n";
 }
@@ -173,3 +246,15 @@ void displaySortStatus(vector<int> &array){
     }
     cout << "Sorted? " << isSorted << endl;
 }
+
+pair<ii,ii> getSplitIntervals(ii interval){
+    if(interval.first == interval.second){
+        int intv = interval.first;
+        return pair(ii(intv,intv),ii(intv,intv));
+    }
+    int s = interval.first;
+    int e = interval.second;
+    int m = s + (e - s) / 2;
+    return pair(ii(m + 1,e), ii(s,m));
+}
+
