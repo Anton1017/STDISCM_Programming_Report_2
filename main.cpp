@@ -36,6 +36,10 @@ void merge(vector<int> &array, int s, int e);
     size : int - the size of the array
 */
 vector<int> randomArrayGenerator(int size);
+
+
+void printArray(vector<int> &array);
+
 int main(){
     // TODO: Seed your randomizer
     const unsigned int seed = 4;
@@ -49,12 +53,16 @@ int main(){
 
     // TODO: Generate a random array of given size
     vector<int> randomArray = randomArrayGenerator(array_size);
+    printArray(randomArray);
     // TODO: Call the generate_intervals method to generate the merge sequence
     vector<ii> intervals = generate_intervals(0, array_size - 1);
     // TODO: Call merge on each interval in sequence
     for(int i = 0; i < (int)intervals.size(); i++){
         merge(randomArray, intervals[i].first, intervals[i].second);
     }
+
+    // PRINT
+    printArray(randomArray);
 
     // Once you get the single-threaded version to work, it's time to implement 
     // the concurrent version. Good luck :)
@@ -118,7 +126,7 @@ vector<int> randomArrayGenerator(int size){
     vector<int> randomArray;
 
     for (int i = 0; i < size; i++){
-        randomArray.push_back(i);
+        randomArray.push_back(i+1);
     }
     //Fisher Yates algorithm
     for (int i = size - 1; i > 0; i--){
@@ -128,4 +136,11 @@ vector<int> randomArrayGenerator(int size){
 
 
     return randomArray;
+}
+
+void printArray(vector<int> &array){
+    for(int i = 0; i < array.size(); i++){
+        cout << array[i] << endl;
+    }
+    cout << endl;
 }
