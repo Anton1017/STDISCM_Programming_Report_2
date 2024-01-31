@@ -156,7 +156,7 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         }
 
     } else { // Concurrent version
-        int segment_size = (e - s + 1) / num_threads;
+        int segment_size = (e - s + num_threads) / num_threads;
         int remainder = (e - s + 1) % num_threads;
 
         vector<thread> threads;
