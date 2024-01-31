@@ -145,32 +145,30 @@ int main(){
     //     }
     // }
 
-    for(int i = 0; i < intervals.size(); i++){
-        ii intv = ii(intervals[i].first,intervals[i].second);
+    for(auto intv: intervals){
         pool.detach_task( // assign to threadpool
             [&randomArray, &umap, intv, &intv_ctr]
             {
                 pair<ii,ii> splitPair = getSplitIntervals(intv);
+    
                 while(true){
                     if(intv.first == intv.second 
                     || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
                         break;
                     }
                 }
-                merge(randomArray, intv.first, intv.second);
+                merge(
+                    randomArray, 
+                    intv.first, 
+                    intv.second
+                );
                 
                 umap[intv] = true;
-                lock_guard<mutex> lock(umap_mutex);
-                intv_ctr++;
             }
         );
     }
 
-    while(true){
-        //sync_out.println(pool.get_tasks_total(), " tasks total, ", pool.get_tasks_running(), " tasks running, ", pool.get_tasks_queued(), " tasks queued.");
-        if(intv_ctr == intv_size)
-            break;
-    }
+    pool.wait();
 
     // End timer
     auto end_time{std::chrono::steady_clock::now()};
