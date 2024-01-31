@@ -125,11 +125,11 @@ vector<ii> generate_intervals(int start, int end) {
 }
 
 void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
-    if (e < s) {
+    if (e <= s) {
         return;
     }
-    // Single threaded version
-    if (num_threads == 1) {
+
+    if (num_threads == 1 || (e - s + 1) <= 1000) {
         int m = s + (e - s) / 2;
         vector<int> left;
         vector<int> right;
@@ -169,11 +169,11 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
 
         // Create futures to represent the asynchronous tasks
         auto left_future = std::async(std::launch::async, [&]() {
-            merge(left, 0, left.size() - 1, num_threads / 2, ts);
+            merge(left, s, left.size() - 1, num_threads / 2, ts);
         });
 
         auto right_future = std::async(std::launch::async, [&]() {
-            merge(right, 0, right.size() - 1, num_threads / 2, ts);
+            merge(right, mid + 1, right.size() - 1, num_threads / 2, ts);
         });
 
         // Wait for the asynchronous tasks to finish
