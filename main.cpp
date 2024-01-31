@@ -107,9 +107,6 @@ int main(){
     // prep for concurrent mergesort
     unordered_map<ii, bool, IntPairHash> umap;
 
-    // Start timer
-    auto start_time{std::chrono::steady_clock::now()};
-
     for(int i = 0; i < intervals.size(); i++){
         umap[intervals[i]] = false;
     }
@@ -117,46 +114,58 @@ int main(){
     int intv_ctr = 0;
     int intv_size = intervals.size();
 
-    // for(auto intv: intervals){
-    //     std::cout << intv.first << " " << intv.second << endl;
-    // }
-    // cout << endl;
-
-    // TODO
-    while (true){
-        //cout << intv_ctr << " out of " << intv_size << endl;
-        // for(auto val: umap){
-        //     cout << val.second << endl;
-        // }
-        // cout << endl;
-        
-        if(intv_ctr == intv_size){
-            break;
-        }
-        for(int i = 0; i < intervals.size(); i++){
-            ii intv = ii(intervals[i].first,intervals[i].second);
-            if (intv == ii(-1,-1))
-                continue;
-            pair<ii,ii> splitPair = getSplitIntervals(intv);
-            //std::cout << "forloop: " << intv.first << " " << intv.second << endl;
-            if(intv.first == intv.second || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
-                //std::cout << intv.first << " " << intv.second << endl;
-                pool.detach_task(
-                    [&randomArray, &umap, intv, &intv_ctr]
-                    {
-                        //std::cout << intv.first << " " << intv.second << endl;
-                        merge(randomArray, intv.first, intv.second);
+    // Start timer
+    auto start_time{std::chrono::steady_clock::now()};
+    // while (true){
+    //     if(intv_ctr == intv_size){
+    //         break;
+    //     }
+    //     for(int i = 0; i < intervals.size(); i++){
+    //         ii intv = ii(intervals[i].first,intervals[i].second);
+    //         if (intv == ii(-1,-1))
+    //             continue;
+    //         pair<ii,ii> splitPair = getSplitIntervals(intv);
+    //         if(intv.first == intv.second 
+    //         || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
+    //             pool.detach_task(
+    //                 [&randomArray, &umap, intv, &intv_ctr]
+    //                 {
+    //                     merge(randomArray, intv.first, intv.second);
                         
-                        umap[intv] = true;
-                        lock_guard<mutex> lock(umap_mutex);
-                        intv_ctr++;
+    //                     umap[intv] = true;
+    //                     lock_guard<mutex> lock(umap_mutex);
+    //                     intv_ctr++;
+    //                 }
+    //             );
+    //             intervals[i] = ii(-1,-1);
+    //         }
+    //     }
+    // }
+
+    for(int i = 0; i < intervals.size(); i++){
+        ii intv = ii(intervals[i].first,intervals[i].second);
+        pool.detach_task(
+            [&randomArray, &umap, intv, &intv_ctr]
+            {
+                pair<ii,ii> splitPair = getSplitIntervals(intv);
+                while(true){
+                    if(intv.first == intv.second 
+                    || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
+                        break;
                     }
-                );
-                intervals[i] = ii(-1,-1);
+                }
+                merge(randomArray, intv.first, intv.second);
+                
+                umap[intv] = true;
+                lock_guard<mutex> lock(umap_mutex);
+                intv_ctr++;
             }
-        }
-        
-        //cout << endl;
+        );
+    }
+
+    while(true){
+        if(intv_ctr == intv_size)
+            break;
     }
 
     // End timer
