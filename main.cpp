@@ -3,10 +3,21 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 using namespace std;
 
 typedef pair<int,int> ii;
+
+// Thread synchronization class using mutex, condition variable, and flag
+class ThreadSync {
+    public:
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool ready = false;
+};
 
 /*
 This function generates all the intervals for merge sort iteratively, given the 
@@ -28,7 +39,7 @@ array : vector<int> - array to sort
 s     : int         - start index of merge
 e     : int         - end index (inclusive) of merge
 */
-void merge(vector<int> &array, int s, int e);
+void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts);
 
 /*
     This function generates a random array
@@ -38,16 +49,17 @@ void merge(vector<int> &array, int s, int e);
 */
 vector<int> randomArrayGenerator(int size);
 
-
 void printArray(vector<int> &array);
-
 
 void displaySortStatus(vector<int> &array);
 
 int main(){
+    ThreadSync ts;
+
     // Seed your randomizer
     const unsigned int seed = 4;
     srand(seed);
+
     // Get array size and thread count from user
     int array_size, thread_count;
     cout << "Enter the array size: ";
@@ -67,7 +79,7 @@ int main(){
 
     // Call merge on each interval in sequence
     for(int i = 0; i < (int)intervals.size(); i++){
-        merge(randomArray, intervals[i].first, intervals[i].second);
+        merge(randomArray, intervals[i].first, intervals[i].second, thread_count, ts);
     }
 
     // End timer
@@ -110,32 +122,68 @@ vector<ii> generate_intervals(int start, int end) {
     return retval;
 }
 
-void merge(vector<int> &array, int s, int e) {
-    int m = s + (e - s) / 2;
-    vector<int> left;
-    vector<int> right;
-    for(int i = s; i <= e; i++) {
-        if(i <= m) {
-            left.push_back(array[i]);
-        } else {
-            right.push_back(array[i]);
+void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
+    // Single threaded version
+    if (num_threads == 1) {
+        int m = s + (e - s) / 2;
+        vector<int> left;
+        vector<int> right;
+        for(int i = s; i <= e; i++) {
+            if(i <= m) {
+                left.push_back(array[i]);
+            } else {
+                right.push_back(array[i]);
+            }
         }
-    }
-    int l_ptr = 0, r_ptr = 0;
+        int l_ptr = 0, r_ptr = 0;
 
-    for(int i = s; i <= e; i++) {
-        // no more elements on left half
-        if(l_ptr == (int)left.size()) {
-            array[i] = right[r_ptr];
-            r_ptr++;
+        for(int i = s; i <= e; i++) {
+            // no more elements on left half
+            if(l_ptr == (int)left.size()) {
+                array[i] = right[r_ptr];
+                r_ptr++;
 
-        // no more elements on right half or left element comes first
-        } else if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
-            array[i] = left[l_ptr];
-            l_ptr++;
-        } else {
-            array[i] = right[r_ptr];
-            r_ptr++;
+            // no more elements on right half or left element comes first
+            } else if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
+                array[i] = left[l_ptr];
+                l_ptr++;
+            } else {
+                array[i] = right[r_ptr];
+                r_ptr++;
+            }
+        }
+
+    } else { //concurrent version
+
+        // Divide array into smaller segments and sort each segment in a separate thread
+        int segment_size = (e - s) / num_threads;
+        vector<thread> threads;
+
+        for (int i = 0; i < num_threads; i++) {
+            int start = s + i * segment_size;
+            int end = (i == num_threads - 1) ? e : start + segment_size - 1;
+
+            // Each iteration of the loop creates a new worker thread
+            threads.push_back(thread([&array, start, end, &ts]() {
+
+                // Each worker thread will do each task here
+                merge(array, start, end, 1, ts); // Recursive call with 1 thread
+                unique_lock<mutex> lock(ts.mtx);
+                ts.ready = true;
+                ts.cv.notify_all();
+                ts.ready = false; // Reset flag for next thread
+
+            }));
+        }
+
+        // Wait for all threads to finish
+        for (auto &t : threads) {
+            unique_lock<mutex> lock(ts.mtx);
+            while (!ts.ready) {
+                ts.cv.wait(lock);
+            }
+            ts.ready = false;
+            t.join();
         }
     }
 }
@@ -146,6 +194,7 @@ vector<int> randomArrayGenerator(int size){
     for (int i = 0; i < size; i++){
         randomArray.push_back(i+1);
     }
+
     //Fisher Yates algorithm
     for (int i = size - 1; i > 0; i--){
         int j = std::rand() % (i + 1);
