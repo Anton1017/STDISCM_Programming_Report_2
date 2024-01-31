@@ -156,7 +156,7 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         }
 
     } else { // Concurrent version
-        int segment_size = (e - s + num_threads) / num_threads;
+        int segment_size = (e - s + 1) / num_threads;
         int remainder = (e - s + 1) % num_threads;
 
         vector<thread> threads;
@@ -164,6 +164,9 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         for (int i = 0; i < num_threads; i++) {
             int start = s + i * segment_size + min(i, remainder);
             int end = start + segment_size - 1 + (i < remainder ? 1 : 0);
+
+            start = max(start, s);
+            end = min(end, e);
 
             // Each iteration of the loop creates a new worker thread
             threads.push_back(thread([&array, start, end, &ts]() {
@@ -175,7 +178,7 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
             thread.join();
         }
 
-        // Merge the results using a single thread
+        // Merge the results using multiple threads
         vector<int> merged(e - s + 1);
         int mid = s + (e - s) / 2;
         int l_ptr = s, r_ptr = mid + 1, merged_ptr = 0;
