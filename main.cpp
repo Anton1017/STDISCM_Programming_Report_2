@@ -41,7 +41,7 @@ array : vector<int> - array to sort
 s     : int         - start index of merge
 e     : int         - end index (inclusive) of merge
 */
-void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts);
+void merge(vector<int> &array, int s, int e);
 
 /*
     This function generates a random array
@@ -54,6 +54,8 @@ vector<int> randomArrayGenerator(int size);
 void printArray(vector<int> &array);
 
 void displaySortStatus(vector<int> &array);
+
+void parallel_merge(vector<int>& array, int num_threads);
 
 int main(){
     ThreadSync ts;
@@ -80,9 +82,7 @@ int main(){
     auto start_time{std::chrono::steady_clock::now()};
 
     // Call merge on each interval in sequence
-    for(int i = 0; i < (int)intervals.size(); i++){
-        merge(randomArray, intervals[i].first, intervals[i].second, thread_count, ts);
-    }
+    parallel_merge(randomArray, thread_count);
 
     // End timer
     auto end_time{std::chrono::steady_clock::now()};
@@ -124,135 +124,65 @@ vector<ii> generate_intervals(int start, int end) {
     return retval;
 }
 
-void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
-    if (e <= s) {
-        return;
+void merge(vector<int>& array, int s, int e) {
+    int m = s + (e - s) / 2;
+    vector<int> left;
+    vector<int> right;
+    for(int i = s; i <= e; i++) {
+        if(i <= m) {
+            left.push_back(array[i]);
+        } else {
+            right.push_back(array[i]);
+        }
     }
+    int l_ptr = 0, r_ptr = 0;
 
-    if (num_threads == 1 || (e - s + 1) <= 1000) {
-        int m = s + (e - s) / 2;
-        vector<int> left;
-        vector<int> right;
-        for(int i = s; i <= e; i++) {
-            if(i <= m) {
-                left.push_back(array[i]);
-            } else {
-                right.push_back(array[i]);
-            }
+    for(int i = s; i <= e; i++) {
+        // no more elements on left half
+        if(l_ptr == (int)left.size()) {
+            array[i] = right[r_ptr];
+            r_ptr++;
+
+        // no more elements on right half or left element comes first
+        } else if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
+            array[i] = left[l_ptr];
+            l_ptr++;
+        } else {
+            array[i] = right[r_ptr];
+            r_ptr++;
         }
-        int l_ptr = 0, r_ptr = 0;
-
-        for(int i = s; i <= e; i++) {
-            // no more elements on left half
-            if(l_ptr == (int)left.size()) {
-                array[i] = right[r_ptr];
-                r_ptr++;
-
-            // no more elements on right half or left element comes first
-            } else if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
-                array[i] = left[l_ptr];
-                l_ptr++;
-            } else {
-                array[i] = right[r_ptr];
-                r_ptr++;
-            }
-        }
-
-    } else { // Concurrent version
-
-        // -------FUTURE/ASYNC VERSION--------
-        int mid = s + (e - s) / 2;
-
-        // Divide the array into two halves
-        vector<int> left(array.begin() + s, array.begin() + mid + 1);
-        vector<int> right(array.begin() + mid + 1, array.begin() + e + 1);
-
-        // Create futures to represent the asynchronous tasks
-        auto left_future = std::async(std::launch::async, [&]() {
-            merge(left, s, left.size() - 1, num_threads / 2, ts);
-        });
-
-        auto right_future = std::async(std::launch::async, [&]() {
-            merge(right, mid + 1, right.size() - 1, num_threads / 2, ts);
-        });
-
-        // Wait for the asynchronous tasks to finish
-        left_future.get();
-        right_future.get();
-
-        // Merge the sorted halves
-        long long unsigned i = 0, j = 0, k = s;
-        while (i < left.size() && j < right.size()) {
-            if (left[i] <= right[j]) {
-                array[k] = left[i];
-                i++;
-            } else {
-                array[k] = right[j];
-                j++;
-            }
-            k++;
-        }
-
-        // Copy remaining elements from the left side
-        while (i < left.size()) {
-            array[k] = left[i];
-            i++;
-            k++;
-        }
-
-        // Copy remaining elements from the right side
-        while (j < right.size()) {
-            array[k] = right[j];
-            j++;
-            k++;
-        }
-
-        // -------RECURSION VERSION--------
-        // int mid = s + (e - s) / 2;
-
-        // // Divide the array into two halves
-        // vector<int> left(array.begin() + s, array.begin() + mid + 1);
-        // vector<int> right(array.begin() + mid + 1, array.begin() + e + 1);
-
-        // // Create threads to sort the halves
-        // std::thread t1([&]() {
-        //     merge(left, 0, left.size() - 1, num_threads / 2, ts);
-        // });
-        // std::thread t2([&]() {
-        //     merge(right, 0, right.size() - 1, num_threads / 2, ts);
-        // });
-
-        // // Wait for the threads to finish
-        // t1.join();
-        // t2.join();
-
-        // // Merge the sorted halves
-        // int i = 0, j = 0, k = s;
-        // while (i < left.size() && j < right.size()) {
-        //     if (left[i] <= right[j]) {
-        //         array[k] = left[i];
-        //         i++;
-        //     } else {
-        //         array[k] = right[j];
-        //         j++;
-        //     }
-        //     k++;
-        // }
-
-        // // Copy remaining elements from the left side
-        // while (i < left.size()) {
-        //     array[k] = left[i];
-        //     i++;
-        //     k++;
-        // }
-
-        // // Copy remaining elements from the right side
-        // while (j < right.size()) {
-        //     array[k] = right[j];
-        //     j++;
-        //     k++;
-        // }
     }
+}
+
+void merge_sort(vector<int>& array, int start, int end, int depth, int maxDepth) {
+    if (start < end) {
+        if (depth < maxDepth) {
+            int mid = start + (end - start) / 2;
+            // THREADS
+            thread leftThread(merge_sort, ref(array), start, mid, depth + 1, maxDepth - 1);
+            thread rightThread(merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth - 1);
+
+            leftThread.join();
+            rightThread.join();
+
+            // ASYNC
+            // auto leftFuture = async(launch::async, mergeSort, ref(array), start, mid, maxDepth - 1);
+            // auto rightFuture = async(launch::async, mergeSort, ref(array), mid + 1, end, maxDepth - 1);
+
+            // leftFuture.wait();
+            // rightFuture.wait();
+        } else {
+            merge_sort(array, start, start + (end - start) / 2, depth, maxDepth);
+            merge_sort(array, start + (end - start) / 2 + 1, end, depth, maxDepth);
+        }
+
+        merge(array, start, end);
+    }
+}
+
+void parallel_merge(vector<int>& array, int numThreads) {
+    int maxDepth = log2(numThreads);
+    merge_sort(array, 0, array.size() - 1, 0, maxDepth);
 }
 
 vector<int> randomArrayGenerator(int size){
@@ -267,7 +197,6 @@ vector<int> randomArrayGenerator(int size){
         int j = std::rand() % (i + 1);
         std::swap(randomArray[i], randomArray[j]);
     }
-
 
     return randomArray;
 }
