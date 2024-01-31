@@ -17,6 +17,7 @@ class ThreadSync {
         std::mutex mtx;
         std::condition_variable cv;
         bool ready = false;
+        int finished_threads = 0;
 };
 
 /*
@@ -123,6 +124,7 @@ vector<ii> generate_intervals(int start, int end) {
 }
 
 void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
+    ts.finished_threads = 0;
     // Single threaded version
     if (num_threads == 1) {
         int m = s + (e - s) / 2;
@@ -153,37 +155,30 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
             }
         }
 
-    } else { //concurrent version
-
-        // Divide array into smaller segments and sort each segment in a separate thread
-        int segment_size = (e - s) / num_threads;
+    } else { // Concurrent version
+        int segment_size = (e - s + 1) / num_threads;
         vector<thread> threads;
 
-        for (int i = 0; i < num_threads; i++) {
+        for (int i = 0; i < num_threads; ++i) {
             int start = s + i * segment_size;
             int end = (i == num_threads - 1) ? e : start + segment_size - 1;
 
             // Each iteration of the loop creates a new worker thread
             threads.push_back(thread([&array, start, end, &ts]() {
-
-                // Each worker thread will do each task here
                 merge(array, start, end, 1, ts); // Recursive call with 1 thread
-                unique_lock<mutex> lock(ts.mtx);
-                ts.ready = true;
-                ts.cv.notify_all();
-                ts.ready = false; // Reset flag for next thread
-
             }));
         }
 
-        // Wait for all threads to finish
-        for (auto &t : threads) {
-            unique_lock<mutex> lock(ts.mtx);
-            while (!ts.ready) {
-                ts.cv.wait(lock);
-            }
-            ts.ready = false;
-            t.join();
+        for (auto &thread : threads) {
+            thread.join();
+        }
+
+        // Merge the results using a single thread
+        while ((e - s) > 0) {
+            int mid = s + (e - s) / 2;
+            merge(array, s, mid, 1, ts);
+            merge(array, mid + 1, e, 1, ts);
+            e = mid;
         }
     }
 }
