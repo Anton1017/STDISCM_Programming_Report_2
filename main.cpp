@@ -157,11 +157,13 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
 
     } else { // Concurrent version
         int segment_size = (e - s + 1) / num_threads;
+        int extra_elements = (e - s + 1) % num_threads; // Handle extra elements
+
         vector<thread> threads;
 
         for (int i = 0; i < num_threads; ++i) {
-            int start = s + i * segment_size;
-            int end = (i == num_threads - 1) ? e : start + segment_size - 1;
+            int start = s + i * segment_size + min(i, extra_elements);
+            int end = start + segment_size - 1 + (i < extra_elements ? 1 : 0);
 
             // Each iteration of the loop creates a new worker thread
             threads.push_back(thread([&array, start, end, &ts]() {
@@ -174,11 +176,29 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         }
 
         // Merge the results using a single thread
-        while ((e - s) > 0) {
-            int mid = s + (e - s) / 2;
-            merge(array, s, mid, 1, ts);
-            merge(array, mid + 1, e, 1, ts);
-            e = mid;
+        vector<int> merged(e - s + 1);
+        int mid = s + (e - s) / 2;
+        int l_ptr = s, r_ptr = mid + 1, merged_ptr = 0;
+
+        while (l_ptr <= mid && r_ptr <= e) {
+            if (array[l_ptr] <= array[r_ptr]) {
+                merged[merged_ptr++] = array[l_ptr++];
+            } else {
+                merged[merged_ptr++] = array[r_ptr++];
+            }
+        }
+
+        while (l_ptr <= mid) {
+            merged[merged_ptr++] = array[l_ptr++];
+        }
+
+        while (r_ptr <= e) {
+            merged[merged_ptr++] = array[r_ptr++];
+        }
+
+        // Copy the merged results back to the original array
+        for (int i = 0; i < merged_ptr; ++i) {
+            array[s + i] = merged[i];
         }
     }
 }
