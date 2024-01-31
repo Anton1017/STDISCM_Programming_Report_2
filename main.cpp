@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "BS_thread_pool.hpp" // BS::thread_pool from https://github.com/bshoshany/thread-pool
+#include "BS_thread_pool_utils.hpp"
 
 using namespace std;
 
@@ -62,6 +63,8 @@ struct IntPairHash {
         return size_t(p.first) << 32 | p.second;
     }
 };
+
+BS::synced_stream sync_out;
 
 std::mutex umap_mutex;
 
@@ -144,7 +147,7 @@ int main(){
 
     for(int i = 0; i < intervals.size(); i++){
         ii intv = ii(intervals[i].first,intervals[i].second);
-        pool.detach_task(
+        pool.detach_task( // assign to threadpool
             [&randomArray, &umap, intv, &intv_ctr]
             {
                 pair<ii,ii> splitPair = getSplitIntervals(intv);
@@ -164,6 +167,7 @@ int main(){
     }
 
     while(true){
+        //sync_out.println(pool.get_tasks_total(), " tasks total, ", pool.get_tasks_running(), " tasks running, ", pool.get_tasks_queued(), " tasks queued.");
         if(intv_ctr == intv_size)
             break;
     }
@@ -264,7 +268,7 @@ void printArray(vector<int> &array){
 void displaySortStatus(vector<int> &array){
     string isSorted = "true";
     for(int i = 0; i < array.size() - 1; i++){
-        if(array[i] > array[i+1]){
+        if(array[i] != i + 1){
             isSorted = "false";
             break;
         }
@@ -282,4 +286,3 @@ pair<ii,ii> getSplitIntervals(ii interval){
     int m = s + (e - s) / 2;
     return pair(ii(m + 1,e), ii(s,m));
 }
-
