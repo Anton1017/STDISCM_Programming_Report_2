@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <future>
 
 using namespace std;
 
@@ -158,23 +159,26 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         }
 
     } else { // Concurrent version
+
+        // -------FUTURE/ASYNC VERSION--------
         int mid = s + (e - s) / 2;
 
         // Divide the array into two halves
         vector<int> left(array.begin() + s, array.begin() + mid + 1);
         vector<int> right(array.begin() + mid + 1, array.begin() + e + 1);
 
-        // Create threads to sort the halves
-        std::thread t1([&]() {
+        // Create futures to represent the asynchronous tasks
+        auto left_future = std::async(std::launch::async, [&]() {
             merge(left, 0, left.size() - 1, num_threads / 2, ts);
         });
-        std::thread t2([&]() {
+
+        auto right_future = std::async(std::launch::async, [&]() {
             merge(right, 0, right.size() - 1, num_threads / 2, ts);
         });
 
-        // Wait for the threads to finish
-        t1.join();
-        t2.join();
+        // Wait for the asynchronous tasks to finish
+        left_future.get();
+        right_future.get();
 
         // Merge the sorted halves
         int i = 0, j = 0, k = s;
@@ -202,91 +206,54 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
             j++;
             k++;
         }
+
+        // -------RECURSION VERSION--------
+        // int mid = s + (e - s) / 2;
+
+        // // Divide the array into two halves
+        // vector<int> left(array.begin() + s, array.begin() + mid + 1);
+        // vector<int> right(array.begin() + mid + 1, array.begin() + e + 1);
+
+        // // Create threads to sort the halves
+        // std::thread t1([&]() {
+        //     merge(left, 0, left.size() - 1, num_threads / 2, ts);
+        // });
+        // std::thread t2([&]() {
+        //     merge(right, 0, right.size() - 1, num_threads / 2, ts);
+        // });
+
+        // // Wait for the threads to finish
+        // t1.join();
+        // t2.join();
+
+        // // Merge the sorted halves
+        // int i = 0, j = 0, k = s;
+        // while (i < left.size() && j < right.size()) {
+        //     if (left[i] <= right[j]) {
+        //         array[k] = left[i];
+        //         i++;
+        //     } else {
+        //         array[k] = right[j];
+        //         j++;
+        //     }
+        //     k++;
+        // }
+
+        // // Copy remaining elements from the left side
+        // while (i < left.size()) {
+        //     array[k] = left[i];
+        //     i++;
+        //     k++;
+        // }
+
+        // // Copy remaining elements from the right side
+        // while (j < right.size()) {
+        //     array[k] = right[j];
+        //     j++;
+        //     k++;
+        // }
     }
 }
-
-// void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
-//     ts.finished_threads = 0;
-//     // Single threaded version
-//     if (num_threads == 1) {
-//         int m = s + (e - s) / 2;
-//         vector<int> left;
-//         vector<int> right;
-//         for(int i = s; i <= e; i++) {
-//             if(i <= m) {
-//                 left.push_back(array[i]);
-//             } else {
-//                 right.push_back(array[i]);
-//             }
-//         }
-//         int l_ptr = 0, r_ptr = 0;
-
-//         for(int i = s; i <= e; i++) {
-//             // no more elements on left half
-//             if(l_ptr == (int)left.size()) {
-//                 array[i] = right[r_ptr];
-//                 r_ptr++;
-
-//             // no more elements on right half or left element comes first
-//             } else if(r_ptr == (int)right.size() || left[l_ptr] <= right[r_ptr]) {
-//                 array[i] = left[l_ptr];
-//                 l_ptr++;
-//             } else {
-//                 array[i] = right[r_ptr];
-//                 r_ptr++;
-//             }
-//         }
-
-//     } else { // Concurrent version
-//         int segment_size = (e - s + num_threads) / num_threads;
-//         int remainder = (e - s + 1) % num_threads;
-
-//         vector<thread> threads;
-
-//         for (int i = 0; i < num_threads; i++) {
-//             int start = s + i * segment_size + min(i, remainder);
-//             int end = start + segment_size - 1 + (i < remainder ? 1 : 0);
-
-//             start = max(start, s);
-//             end = min(end, e);
-
-//             // Each iteration of the loop creates a new worker thread
-//             threads.push_back(thread([&array, start, end, &ts]() {
-//                 merge(array, start, end, 1, ts); // Recursive call with 1 thread
-//             }));
-//         }
-
-//         for (auto &thread : threads) {
-//             thread.join();
-//         }
-
-//         // Merge the results using multiple threads
-//         vector<int> merged(e - s + 1);
-//         int mid = s + (e - s) / 2;
-//         int l_ptr = s, r_ptr = mid + 1, merged_ptr = 0;
-
-//         while (l_ptr <= mid && r_ptr <= e) {
-//             if (array[l_ptr] <= array[r_ptr]) {
-//                 merged[merged_ptr++] = array[l_ptr++];
-//             } else {
-//                 merged[merged_ptr++] = array[r_ptr++];
-//             }
-//         }
-
-//         while (l_ptr <= mid) {
-//             merged[merged_ptr++] = array[l_ptr++];
-//         }
-
-//         while (r_ptr <= e) {
-//             merged[merged_ptr++] = array[r_ptr++];
-//         }
-
-//         // Copy the merged results back to the original array
-//         for (int i = 0; i < merged_ptr; i++) {
-//             array[s + i] = merged[i];
-//         }
-//     }
-// }
 
 vector<int> randomArrayGenerator(int size){
     vector<int> randomArray;
