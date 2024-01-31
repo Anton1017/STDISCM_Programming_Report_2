@@ -63,6 +63,8 @@ struct IntPairHash {
     }
 };
 
+std::mutex umap_mutex;
+
 int main(){
     // Seed your randomizer
     const unsigned int seed = 4;
@@ -104,43 +106,57 @@ int main(){
 
     // prep for concurrent mergesort
     unordered_map<ii, bool, IntPairHash> umap;
-    mutex umap_mutex;
 
     // Start timer
     auto start_time{std::chrono::steady_clock::now()};
 
     for(int i = 0; i < intervals.size(); i++){
-        if(intervals[i].first == intervals[i].second)
-            umap[intervals[i]] = true;
-        else
-            umap[intervals[i]] = false;
+        umap[intervals[i]] = false;
     }
 
     int intv_ctr = 0;
     int intv_size = intervals.size();
 
+    // for(auto intv: intervals){
+    //     std::cout << intv.first << " " << intv.second << endl;
+    // }
+    // cout << endl;
+
     // TODO
     while (true){
         //cout << intv_ctr << " out of " << intv_size << endl;
+        // for(auto val: umap){
+        //     cout << val.second << endl;
+        // }
+        // cout << endl;
+        
         if(intv_ctr == intv_size){
             break;
         }
-        for(auto intv: intervals){
+        for(int i = 0; i < intervals.size(); i++){
+            ii intv = ii(intervals[i].first,intervals[i].second);
+            if (intv == ii(-1,-1))
+                continue;
             pair<ii,ii> splitPair = getSplitIntervals(intv);
-            if(umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true){
+            //std::cout << "forloop: " << intv.first << " " << intv.second << endl;
+            if(intv.first == intv.second || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
+                //std::cout << intv.first << " " << intv.second << endl;
                 pool.detach_task(
-                    [&randomArray, &umap, &intv, &intv_ctr, &umap_mutex]
+                    [&randomArray, &umap, intv, &intv_ctr]
                     {
+                        //std::cout << intv.first << " " << intv.second << endl;
                         merge(randomArray, intv.first, intv.second);
-
-                        lock_guard<mutex> lock(umap_mutex);
+                        
                         umap[intv] = true;
+                        lock_guard<mutex> lock(umap_mutex);
                         intv_ctr++;
                     }
                 );
-
+                intervals[i] = ii(-1,-1);
             }
         }
+        
+        //cout << endl;
     }
 
     // End timer
@@ -148,7 +164,7 @@ int main(){
     std::chrono::duration<double> elapsed{end_time - start_time};
 
     // PRINT
-    printArray(randomArray);
+    //printArray(randomArray);
     displaySortStatus(randomArray);
     cout << "Time: " << elapsed.count() << "s\n";
 }
