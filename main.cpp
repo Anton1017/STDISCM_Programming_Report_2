@@ -181,7 +181,7 @@ void merge(vector<int> &array, int s, int e, int num_threads, ThreadSync &ts) {
         right_future.get();
 
         // Merge the sorted halves
-        int i = 0, j = 0, k = s;
+        long long unsigned i = 0, j = 0, k = s;
         while (i < left.size() && j < right.size()) {
             if (left[i] <= right[j]) {
                 array[k] = left[i];
@@ -273,7 +273,7 @@ vector<int> randomArrayGenerator(int size){
 }
 
 void printArray(vector<int> &array){
-    for(int i = 0; i < array.size(); i++){
+    for(long long unsigned int i = 0; i < array.size(); i++){
         cout << array[i] << endl;
     }
     cout << endl;
@@ -281,7 +281,7 @@ void printArray(vector<int> &array){
 
 void displaySortStatus(vector<int> &array){
     string isSorted = "true";
-    for(int i = 0; i < array.size() - 1; i++){
+    for(long long unsigned i = 0; i < array.size() - 1; i++){
         if(array[i] > array[i+1]){
             isSorted = "false";
             break;
