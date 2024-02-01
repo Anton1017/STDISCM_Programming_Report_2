@@ -12,15 +12,6 @@ using namespace std;
 
 typedef pair<int,int> ii;
 
-// Thread synchronization class using mutex, condition variable, and flag
-class ThreadSync {
-    public:
-        std::mutex mtx;
-        std::condition_variable cv;
-        bool ready = false;
-        int finished_threads = 0;
-};
-
 /*
 This function generates all the intervals for merge sort iteratively, given the 
 range of indices to sort. Algorithm runs in O(n).
@@ -58,8 +49,6 @@ void displaySortStatus(vector<int> &array);
 void parallel_merge(vector<int>& array, int num_threads, vector<ii> intervals);
 
 int main(){
-    ThreadSync ts;
-
     // Seed your randomizer
     const unsigned int seed = 4;
     srand(seed);
@@ -154,7 +143,7 @@ void merge(vector<int>& array, int s, int e) {
     }
 }
 
-void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth, ThreadSync &ts, vector<ii> &intervals) {
+void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth, vector<ii> &intervals) {
     if (start < end) {
         if (depth < maxDepth) {
             int mid = start + (end - start) / 2;
@@ -162,17 +151,24 @@ void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth,
             vector<ii> left_intervals(intervals.begin(), intervals.begin() + intervals.size() / 2);
             vector<ii> right_intervals(intervals.begin() + intervals.size() / 2, intervals.end());
 
-            // ASYNC
-            auto leftFuture = async(launch::async, merge_sort, ref(array), start, mid, depth + 1, maxDepth, ref(ts),
-                                    ref(left_intervals));
-            auto rightFuture = async(launch::async, merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth, ref(ts),
-                                     ref(right_intervals));
+            // THREAD VERSION
+            thread leftThread(merge_sort, ref(array), start, mid, depth + 1, maxDepth, ref(left_intervals));
+            thread rightThread(merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth, ref(right_intervals));
 
-            leftFuture.wait();
-            rightFuture.wait();
+            leftThread.join();
+            rightThread.join();
+
+            // ASYNC
+            // auto leftFuture = async(launch::async, merge_sort, ref(array), start, mid, depth + 1, maxDepth, ref(ts),
+            //                         ref(left_intervals));
+            // auto rightFuture = async(launch::async, merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth, ref(ts),
+            //                          ref(right_intervals));
+
+            // leftFuture.wait();
+            // rightFuture.wait();
         } else {
-            merge_sort(array, start, start + (end - start) / 2, depth, maxDepth, ts, intervals);
-            merge_sort(array, start + (end - start) / 2 + 1, end, depth, maxDepth, ts, intervals);
+            merge_sort(array, start, start + (end - start) / 2, depth, maxDepth, intervals);
+            merge_sort(array, start + (end - start) / 2 + 1, end, depth, maxDepth, intervals);
         }
 
         merge(array, start, end);
@@ -181,8 +177,7 @@ void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth,
 
 void parallel_merge(vector<int>& array, int numThreads, vector<ii> intervals) {
     int maxDepth = log2(numThreads);
-    ThreadSync ts;
-    merge_sort(array, 0, array.size() - 1, 0, maxDepth, ts, intervals);
+    merge_sort(array, 0, array.size() - 1, 0, maxDepth, intervals);
 }
 
 vector<int> randomArrayGenerator(int size){
