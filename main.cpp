@@ -55,7 +55,7 @@ void printArray(vector<int> &array);
 
 void displaySortStatus(vector<int> &array);
 
-void parallel_merge(vector<int>& array, int num_threads);
+void parallel_merge(vector<int>& array, int num_threads, vector<ii> intervals);
 
 int main(){
     ThreadSync ts;
@@ -82,7 +82,7 @@ int main(){
     auto start_time{std::chrono::steady_clock::now()};
 
     // Call merge on each interval in sequence
-    parallel_merge(randomArray, thread_count);
+    parallel_merge(randomArray, thread_count, intervals);
 
     // End timer
     auto end_time{std::chrono::steady_clock::now()};
@@ -154,35 +154,35 @@ void merge(vector<int>& array, int s, int e) {
     }
 }
 
-void merge_sort(vector<int>& array, int start, int end, int depth, int maxDepth) {
+void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth, ThreadSync &ts, vector<ii> &intervals) {
     if (start < end) {
         if (depth < maxDepth) {
             int mid = start + (end - start) / 2;
-            // THREADS
-            thread leftThread(merge_sort, ref(array), start, mid, depth + 1, maxDepth - 1);
-            thread rightThread(merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth - 1);
 
-            leftThread.join();
-            rightThread.join();
+            vector<ii> left_intervals(intervals.begin(), intervals.begin() + intervals.size() / 2);
+            vector<ii> right_intervals(intervals.begin() + intervals.size() / 2, intervals.end());
 
             // ASYNC
-            // auto leftFuture = async(launch::async, mergeSort, ref(array), start, mid, maxDepth - 1);
-            // auto rightFuture = async(launch::async, mergeSort, ref(array), mid + 1, end, maxDepth - 1);
+            auto leftFuture = async(launch::async, merge_sort, ref(array), start, mid, depth + 1, maxDepth, ref(ts),
+                                    ref(left_intervals));
+            auto rightFuture = async(launch::async, merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth, ref(ts),
+                                     ref(right_intervals));
 
-            // leftFuture.wait();
-            // rightFuture.wait();
+            leftFuture.wait();
+            rightFuture.wait();
         } else {
-            merge_sort(array, start, start + (end - start) / 2, depth, maxDepth);
-            merge_sort(array, start + (end - start) / 2 + 1, end, depth, maxDepth);
+            merge_sort(array, start, start + (end - start) / 2, depth, maxDepth, ts, intervals);
+            merge_sort(array, start + (end - start) / 2 + 1, end, depth, maxDepth, ts, intervals);
         }
 
         merge(array, start, end);
     }
 }
 
-void parallel_merge(vector<int>& array, int numThreads) {
+void parallel_merge(vector<int>& array, int numThreads, vector<ii> intervals) {
     int maxDepth = log2(numThreads);
-    merge_sort(array, 0, array.size() - 1, 0, maxDepth);
+    ThreadSync ts;
+    merge_sort(array, 0, array.size() - 1, 0, maxDepth, ts, intervals);
 }
 
 vector<int> randomArrayGenerator(int size){
