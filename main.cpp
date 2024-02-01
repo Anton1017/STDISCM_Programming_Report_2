@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <future>
+#include <algorithm>
 
 using namespace std;
 
@@ -204,12 +205,9 @@ void printArray(vector<int> &array){
 }
 
 void displaySortStatus(vector<int> &array){
-    string isSorted = "true";
-    for(long long unsigned i = 0; i < array.size() - 1; i++){
-        if(array[i] > array[i+1]){
-            isSorted = "false";
-            break;
-        }
-    }
-    cout << "Sorted? " << isSorted << endl;
+    cout << "Sorted? ";
+    if (std::is_sorted(array.begin(), array.end()))
+        cout << "True" << endl;
+    else 
+        cout << "False" << endl;
 }
