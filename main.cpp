@@ -34,7 +34,7 @@ array : vector<int> - array to sort
 s     : int         - start index of merge
 e     : int         - end index (inclusive) of merge
 */
-void merge(vector<int> &array, int s, int e);
+void merge(vector<int> &array, int s, int m, int e);
 
 /*
     This function generates a random array
@@ -83,6 +83,29 @@ int main(){
     vector<int> randomArray = randomArrayGenerator(array_size);
     //printArray(randomArray);
 
+    int splitSize = array_size / thread_count;
+    int splitRem = array_size % thread_count;
+    if(splitSize == 0){
+        splitSize = array_size;
+    }
+
+    vector<ii> mainIntervals;
+    int first = 0;
+    int second = -1;
+    for(int i = 0; i < thread_count; i++){
+        if(splitRem != 0){
+            second += 1;
+            splitRem -= 1;
+        }
+        second += splitSize;
+        mainIntervals.push_back(ii(first,second));
+        first = second + 1;
+    }
+
+    // for(auto intv: mainIntervals){
+    //     cout << intv.first << " " << intv.second << endl;
+    // }
+
     // Call the generate_intervals method to generate the merge sequence
     vector<ii> intervals = generate_intervals(0, array_size - 1);
 
@@ -110,12 +133,9 @@ int main(){
     // prep for concurrent mergesort
     unordered_map<ii, bool, IntPairHash> umap;
 
-    for(int i = 0; i < intervals.size(); i++){
-        umap[intervals[i]] = false;
+    for(int i = 0; i < mainIntervals.size(); i++){
+        umap[mainIntervals[i]] = false;
     }
-
-    int intv_ctr = 0;
-    int intv_size = intervals.size();
 
     // Start timer
     auto start_time{std::chrono::steady_clock::now()};
@@ -145,28 +165,65 @@ int main(){
     //     }
     // }
 
-    for(auto intv: intervals){
+    for(auto intv_main: mainIntervals){
         pool.detach_task( // assign to threadpool
-            [&randomArray, &umap, intv, &intv_ctr]
+            [&randomArray, &umap, intv_main]
             {
-                pair<ii,ii> splitPair = getSplitIntervals(intv);
-    
-                while(true){
-                    if(intv.first == intv.second 
-                    || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
-                        break;
-                    }
+                vector<ii> intervals = generate_intervals(intv_main.first, intv_main.second);
+                for(auto intv: intervals){
+                    int midpoint = intv.first + (intv.second - intv.first) / 2;
+                    merge(
+                        randomArray, 
+                        intv.first,
+                        midpoint,
+                        intv.second
+                    );
                 }
-                merge(
-                    randomArray, 
-                    intv.first, 
-                    intv.second
-                );
+                umap[intv_main] = true;
                 
-                umap[intv] = true;
             }
         );
     }
+
+    //combining results from earlier assignment to threads
+    while(mainIntervals.size() > 1){
+        vector<ii> mergedIntervals;
+        for(int i = 0; i < mainIntervals.size(); i += 2){
+            ii mergedInterval;
+            ii left = mainIntervals[i];
+            if(i+1 < mainIntervals.size()){
+                ii right = mainIntervals[i+1];
+                mergedInterval = ii(left.first, right.second);
+            } else{
+                mergedInterval = left;
+            }
+            umap[mergedInterval] = false;
+            mergedIntervals.push_back(mergedInterval);
+            pool.detach_task( // assign to threadpool
+                [&randomArray, &umap, mergedInterval, left]
+                {
+                    ii leftSplit = left;
+                    ii rightSplit = ii(left.second + 1, mergedInterval.second);
+                    while(true){
+                        if(mergedInterval.first == mergedInterval.second 
+                        || (umap[mergedInterval] == false && umap[leftSplit]==true && umap[rightSplit]==true)){
+                            merge(
+                                randomArray, 
+                                mergedInterval.first,
+                                left.second,
+                                mergedInterval.second
+                            );
+                            umap[mergedInterval] = true;
+                            break;
+                        }
+                    }
+                }
+            );
+        }
+        mainIntervals = mergedIntervals;
+    }
+
+
 
     pool.wait();
 
@@ -210,8 +267,7 @@ vector<ii> generate_intervals(int start, int end) {
     return retval;
 }
 
-void merge(vector<int> &array, int s, int e) {
-    int m = s + (e - s) / 2;
+void merge(vector<int> &array, int s, int m, int e) {
     vector<int> left;
     vector<int> right;
     for(int i = s; i <= e; i++) {
