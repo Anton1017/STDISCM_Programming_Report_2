@@ -165,6 +165,7 @@ int main(){
     //     }
     // }
 
+    //splitting and assigning range to the number of threads
     for(auto intv_main: mainIntervals){
         pool.detach_task( // assign to threadpool
             [&randomArray, &umap, intv_main]
