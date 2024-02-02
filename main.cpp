@@ -160,9 +160,9 @@ void merge_sort(vector<int> &array, int start, int end, int depth, int maxDepth,
             rightThread.join();
 
             // ASYNC
-            // auto leftFuture = async(launch::async, merge_sort, ref(array), start, mid, depth + 1, maxDepth, ref(ts),
+            // auto leftFuture = async(launch::async, merge_sort, ref(array), start, mid, depth + 1, maxDepth,
             //                         ref(left_intervals));
-            // auto rightFuture = async(launch::async, merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth, ref(ts),
+            // auto rightFuture = async(launch::async, merge_sort, ref(array), mid + 1, end, depth + 1, maxDepth,
             //                          ref(right_intervals));
 
             // leftFuture.wait();
