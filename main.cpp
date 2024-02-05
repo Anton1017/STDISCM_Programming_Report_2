@@ -102,33 +102,11 @@ int main(){
         first = second + 1;
     }
 
-    // for(auto intv: mainIntervals){
-    //     cout << intv.first << " " << intv.second << endl;
-    // }
-
     // Call the generate_intervals method to generate the merge sequence
     vector<ii> intervals = generate_intervals(0, array_size - 1);
 
     // Construct a thread pool with the corresponding thread count
     BS::thread_pool pool(thread_count);
-
-
-    // single-threaded-----------------------------
-
-    // // Start timer
-    // auto start_time{std::chrono::steady_clock::now()};
-
-    // Call merge on each interval in sequence
-    // for(int i = 0; i < (int)intervals.size(); i++){
-    //     merge(randomArray, intervals[i].first, intervals[i].second);
-    // }
-
-    // // End timer
-    // auto end_time{std::chrono::steady_clock::now()};
-    // std::chrono::duration<double> elapsed{end_time - start_time};
-
-    // ---------------------------------------------
-
 
     // prep for concurrent mergesort
     unordered_map<ii, bool, IntPairHash> umap;
@@ -139,33 +117,8 @@ int main(){
 
     // Start timer
     auto start_time{std::chrono::steady_clock::now()};
-    // while (true){
-    //     if(intv_ctr == intv_size){
-    //         break;
-    //     }
-    //     for(int i = 0; i < intervals.size(); i++){
-    //         ii intv = ii(intervals[i].first,intervals[i].second);
-    //         if (intv == ii(-1,-1))
-    //             continue;
-    //         pair<ii,ii> splitPair = getSplitIntervals(intv);
-    //         if(intv.first == intv.second 
-    //         || (umap[intv] == false && umap[splitPair.first]==true && umap[splitPair.second]==true)){
-    //             pool.detach_task(
-    //                 [&randomArray, &umap, intv, &intv_ctr]
-    //                 {
-    //                     merge(randomArray, intv.first, intv.second);
-                        
-    //                     umap[intv] = true;
-    //                     lock_guard<mutex> lock(umap_mutex);
-    //                     intv_ctr++;
-    //                 }
-    //             );
-    //             intervals[i] = ii(-1,-1);
-    //         }
-    //     }
-    // }
 
-    //splitting and assigning range to the number of threads
+    // splitting and assigning range to the number of threads
     for(auto intv_main: mainIntervals){
         pool.detach_task( // assign to threadpool
             [&randomArray, &umap, intv_main]
@@ -186,7 +139,7 @@ int main(){
         );
     }
 
-    //combining results from earlier assignment to threads
+    // combining results from earlier assignment to threads
     while(mainIntervals.size() > 1){
         vector<ii> mergedIntervals;
         for(int i = 0; i < mainIntervals.size(); i += 2){
@@ -224,8 +177,7 @@ int main(){
         mainIntervals = mergedIntervals;
     }
 
-
-
+    // wait until all threads are finished
     pool.wait();
 
     // End timer
@@ -233,7 +185,6 @@ int main(){
     std::chrono::duration<double> elapsed{end_time - start_time};
 
     // PRINT
-    //printArray(randomArray);
     displaySortStatus(randomArray);
     cout << "Time: " << elapsed.count() << "s\n";
 }
