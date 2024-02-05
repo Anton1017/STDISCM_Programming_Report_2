@@ -102,9 +102,6 @@ int main(){
         first = second + 1;
     }
 
-    // Call the generate_intervals method to generate the merge sequence
-    vector<ii> intervals = generate_intervals(0, array_size - 1);
-
     // Construct a thread pool with the corresponding thread count
     BS::thread_pool pool(thread_count);
 
